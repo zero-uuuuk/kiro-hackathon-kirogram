@@ -121,7 +121,7 @@ CREATE TABLE job_postings (
     start_date      DATE,
     end_date        DATE,
     key_info        TEXT,
-    source_filename TEXT,
+    source_filename TEXT UNIQUE,
     pinecone_id     TEXT UNIQUE,
     created_at      TIMESTAMP DEFAULT NOW()
 );
@@ -155,3 +155,8 @@ CREATE TABLE academic_notices (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS cv_summary TEXT;
 ALTER TABLE ai_recommendations ADD COLUMN IF NOT EXISTS job_posting_id INTEGER REFERENCES job_postings(id);
 ALTER TABLE ai_recommendations ALTER COLUMN post_id DROP NOT NULL;
+ALTER TABLE ai_recommendations ADD CONSTRAINT uq_ai_rec_user_job UNIQUE (user_id, job_posting_id);
+ALTER TABLE ai_recommendations ADD COLUMN IF NOT EXISTS weaknesses JSONB DEFAULT '[]';
+ALTER TABLE ai_recommendations ADD COLUMN IF NOT EXISTS strengths JSONB DEFAULT '[]';
+ALTER TABLE job_postings ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE job_postings ADD COLUMN IF NOT EXISTS url TEXT;

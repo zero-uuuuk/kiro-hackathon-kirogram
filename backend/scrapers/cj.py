@@ -1,6 +1,5 @@
 """CJ 채용공고 JPG 스크래퍼 — pydantic-ai Agent 기반."""
 
-from pathlib import Path
 from urllib.parse import urljoin
 
 import httpx
@@ -8,19 +7,21 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from pydantic_ai import Agent
 
+from config import CJ_JOBS_DIR
+
 load_dotenv()
 
-DOWNLOADS_DIR = Path(__file__).parent / "downloads"
 LIST_URL = "https://recruit.cj.net/recruit/ko/recruit/recruit/list.fo"
 DETAIL_BASE = "https://recruit.cj.net/recruit/ko/recruit/recruit/detail.fo"
 RECRUIT_BASE = "https://recruit.cj.net"
 
-agent = Agent("google-gla:gemini-2.0-flash")
+agent = Agent("google-gla:gemini-3-flash-preview")
 
 
 @agent.tool_plain
 async def collect_job_list() -> list[str]:
     """리스트 페이지 API 응답에서 모든 공고의 zz_jo_num 목록을 수집한다."""
+    print("[TOOL] collect_job_list 호출됨")
     nums: list[str] = []
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -28,25 +29,28 @@ async def collect_job_list() -> list[str]:
 
         async def on_response(response):
             if "searchNewGonggoList" in response.url:
+                print(f"  [NET] 응답 인터셉트: {response.url}")
                 try:
                     data = await response.json()
                     for item in data.get("ds_newRecruitList") or []:
                         num = str(item.get("zz_jo_num", ""))
                         if num and num not in nums:
                             nums.append(num)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"  [ERR] JSON 파싱 실패: {e}")
 
         page.on("response", on_response)
         await page.goto(LIST_URL, wait_until="networkidle")
         await browser.close()
+    print(f"[TOOL] collect_job_list 완료 → {len(nums)}개: {nums}")
     return nums
 
 
 @agent.tool_plain
 async def download_job_jpg(zz_jo_num: str) -> str:
     """상세 페이지에서 공고 JPG 이미지를 다운로드하여 저장 경로를 반환한다."""
-    DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[TOOL] download_job_jpg 호출됨 → zz_jo_num={zz_jo_num}")
+    CJ_JOBS_DIR.mkdir(parents=True, exist_ok=True)
     jpg_url: str | None = None
 
     async with async_playwright() as p:
@@ -57,16 +61,20 @@ async def download_job_jpg(zz_jo_num: str) -> str:
         if img:
             src = await img.get_attribute("src") or ""
             jpg_url = src if src.startswith("http") else urljoin(RECRUIT_BASE, src)
+            print(f"  [IMG] JPG URL 발견: {jpg_url}")
+        else:
+            print(f"  [WARN] JPG 이미지 없음: {zz_jo_num}")
         await browser.close()
 
     if not jpg_url:
         return f"No JPG found for {zz_jo_num}"
 
-    save_path = DOWNLOADS_DIR / f"{zz_jo_num}.jpg"
+    save_path = CJ_JOBS_DIR / f"{zz_jo_num}.jpg"
     async with httpx.AsyncClient() as client:
         resp = await client.get(jpg_url)
         resp.raise_for_status()
         save_path.write_bytes(resp.content)
+    print(f"  [SAVE] 저장 완료: {save_path}")
     return str(save_path)
 
 

@@ -2,21 +2,21 @@
 
 import json
 import re
-from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from pydantic_ai import Agent
 
+from config import SAMSUNG_JOBS_DIR
+
 load_dotenv()
 
-SAMSUNG_JOBS_DIR = Path(__file__).parent / "samsung_jobs"
 LIST_URL = "https://www.samsungcareers.com/hr/"
 DETAIL_URL = "https://www.samsungcareers.com/recruit/detail.data"
 
 agent = Agent(
-    "google-gla:gemini-2.0-flash",
+    "google-gla:gemini-3-flash-preview",
     system_prompt=(
         "너는 채용공고 텍스트 정제 도우미야. "
         "scrape_job_detail 툴로 원본 텍스트를 받으면 다음 노이즈를 제거해:\n"
@@ -32,6 +32,7 @@ agent = Agent(
 @agent.tool_plain
 async def collect_seqno_list() -> list[str]:
     """리스트 페이지에서 /hr/list.data 응답을 인터셉트하여 seqno 목록을 반환한다."""
+    print("[TOOL] collect_seqno_list 호출됨")
     html_body = ""
 
     async with async_playwright() as p:
@@ -41,22 +42,26 @@ async def collect_seqno_list() -> list[str]:
         async def on_response(response):
             nonlocal html_body
             if "/hr/list.data" in response.url:
+                print(f"  [NET] 응답 인터셉트: {response.url}")
                 try:
                     html_body = await response.text()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"  [ERR] 응답 텍스트 읽기 실패: {e}")
 
         page.on("response", on_response)
         await page.goto(LIST_URL, wait_until="networkidle")
         await browser.close()
 
     raw = re.findall(r'data-value="([\d,]+)"', html_body)
-    return list(dict.fromkeys(v.replace(",", "") for v in raw))
+    seqnos = list(dict.fromkeys(v.replace(",", "") for v in raw))
+    print(f"[TOOL] collect_seqno_list 완료 → {len(seqnos)}개: {seqnos}")
+    return seqnos
 
 
 @agent.tool_plain
 async def scrape_job_detail(seqno: str) -> str:
     """detail.data API를 호출하여 공고 원본 텍스트를 반환한다 (노이즈 제거 전)."""
+    print(f"[TOOL] scrape_job_detail 호출됨 → seqno={seqno}")
     async with httpx.AsyncClient() as client:
         resp = await client.get(DETAIL_URL, params={"seqno": seqno, "strCode": ""})
         resp.raise_for_status()
@@ -84,13 +89,16 @@ async def scrape_job_detail(seqno: str) -> str:
         "process": result.get("processKr", ""),
         "attachment": result.get("attachmentKr", ""),
     }
-    return "\n".join(f"{k}: {v}" for k, v in fields.items())
+    text = "\n".join(f"{k}: {v}" for k, v in fields.items())
+    print(f"  [DATA] title={fields['title']!r}, company={fields['company']!r}")
+    return text
 
 
 @agent.tool_plain
 def save_job_json(seqno: str, title: str, company: str, startdate: str, enddate: str,
                   intro: str, jobs: str, step: str, process: str, attachment: str) -> str:
     """정제된 공고 데이터를 JSON 파일로 저장하고 저장 경로를 반환한다."""
+    print(f"[TOOL] save_job_json 호출됨 → seqno={seqno}, title={title!r}")
     SAMSUNG_JOBS_DIR.mkdir(parents=True, exist_ok=True)
     data = {
         "seqno": seqno, "title": title, "company": company,
@@ -100,6 +108,7 @@ def save_job_json(seqno: str, title: str, company: str, startdate: str, enddate:
     }
     save_path = SAMSUNG_JOBS_DIR / f"{seqno}.json"
     save_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  [SAVE] 저장 완료: {save_path}")
     return str(save_path)
 
 
