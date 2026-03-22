@@ -13,7 +13,7 @@ from db import get_pool
 router = APIRouter()
 
 cv_agent = Agent(
-    "google-gla:gemini-2.0-flash",
+    "google-gla:gemini-3-flash-preview",
     system_prompt=(
         "너는 이력서 정제 도우미야. "
         "주어진 이력서 원문에서 핵심 정보(기술스택, 경력, 학력, 프로젝트)만 "
@@ -30,7 +30,7 @@ async def _extract_from_url(url: str) -> str:
     async with httpx.AsyncClient(follow_redirects=True) as client:
         resp = await client.get(url)
         resp.raise_for_status()
-    return _strip_html(resp.text)
+        return _strip_html(resp.text)
 
 
 def _extract_from_pdf(data: bytes) -> str:
