@@ -11,3 +11,7 @@ uvicorn[standard]
 google-auth-oauthlib
 google-api-python-client
 python-jose[cryptography]
+pydantic-ai[google]
+google-generativeai
+numpy
+python-multipart

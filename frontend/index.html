@@ -1,0 +1,896 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Calendar as CalendarIcon, 
+  Search, 
+  Plus, 
+  Settings, 
+  ChevronLeft, 
+  ChevronRight, 
+  Check, 
+  X, 
+  Bot, 
+  Briefcase,
+  GraduationCap,
+  Link2,
+  CalendarCheck,
+  Zap,
+  Sparkles,
+  Info,
+  Building,
+  Target,
+  ExternalLink,
+  LogOut,
+  User,
+  FileText,
+  UploadCloud,
+  CheckCircle2,
+  AlertTriangle,
+  ListTodo
+} from 'lucide-react';
+
+// --- [모의 데이터] ---
+const MOCK_RECOMMENDATIONS = [
+  {
+    id: 1,
+    title: "현대자동차 IT 부문 채용연계형 인턴",
+    source: "현대차 채용포털",
+    deadline: "2026.03.30",
+    relevance: 96,
+    category: "job",
+    url: "https://talent.hyundai.com",
+    strengths: [
+      "제출된 CV의 '자연어 처리' 프로젝트 경험과 완벽 일치",
+      "알고리즘 대회 수상 이력 (서류 가산점)"
+    ],
+    weaknesses: [
+      "필수 자격 요건인 OPIc(IM2 이상) 성적 누락"
+    ],
+    content: "현대자동차 2026년 상반기 IT부문 인턴십입니다. 소프트웨어 엔지니어링 및 AI 데이터 분석 직무를 모집하며 우수 수료자는 정규직으로 전환됩니다.",
+    actionPlan: [
+      { title: "OPIc 정기시험 응시", offsetDays: -14 },
+      { title: "자연어 처리 포트폴리오 다듬기", offsetDays: -7 },
+      { title: "현대차 자소서 초안 작성", offsetDays: -3 }
+    ]
+  },
+  {
+    id: 2,
+    title: "토스 프론트엔드 어시스턴트",
+    source: "원티드",
+    deadline: "2026.03.26",
+    relevance: 92,
+    category: "job",
+    url: "https://wanted.co.kr",
+    strengths: [
+      "React 기반 웹 서비스 배포 경험 존재",
+      "스타트업 인턴 경험 보유로 핏(Fit) 일치"
+    ],
+    weaknesses: [
+      "Next.js 기반의 SSR 프로젝트 경험 부족"
+    ],
+    content: "3개월간 토스의 문화를 경험하며 실무 프론트엔드 개발을 수행하는 어시스턴트 채용건입니다. 실무진과의 코드 리뷰 세션이 포함됩니다.",
+    actionPlan: [
+      { title: "Next.js 튜토리얼 및 클론코딩", offsetDays: -10 },
+      { title: "토스 기술 블로그 정독 및 요약", offsetDays: -4 },
+      { title: "이력서 최종 검토 및 제출", offsetDays: -1 }
+    ]
+  }
+];
+
+// 캘린더 초기 데이터 (일부 이벤트)
+const MOCK_EVENTS = [
+  { 
+    id: 104, 
+    title: "26학년도 1학기 수강포기", 
+    year: 2026, month: 2, date: 23, 
+    type: 'agent',
+    category: "school",
+    source: '한양대 학사안내',
+    url: "https://hanyang.ac.kr",
+    relevance: 95,
+    content: "2026학년도 1학기 수강포기 기간입니다. HY-in 포털을 통해 신청 가능합니다.",
+    deadline: "2026.03.25"
+  },
+  { 
+    id: 105, 
+    title: "카카오 코딩테스트", 
+    year: 2026, month: 2, date: 18, 
+    type: 'agent',
+    category: "job",
+    source: '원티드',
+    relevance: 89,
+    url: "https://careers.kakao.com",
+    content: "카카오 2026년 상반기 채용 연계형 인턴십 코딩테스트 일정입니다.",
+    deadline: "2026.03.18"
+  },
+];
+
+// --- [로고 컴포넌트] ---
+function SchedAILogo({ className = "" }) {
+  return (
+    <svg className={className} width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="10" fill="url(#logo_grad)" />
+      <path d="M9 13C9 11.3431 10.3431 10 12 10H20C21.6569 10 23 11.3431 23 13V15H9V13Z" fill="white" />
+      <path d="M9 15H23V19C23 20.6569 21.6569 22 20 22H12C10.3431 22 9 20.6569 9 19V15Z" fill="white" fillOpacity="0.4" />
+      <path d="M16 13.5C16.2 15.6 17.4 16.8 19.5 17C17.4 17.2 16.2 18.4 16 20.5C15.8 18.4 14.6 17.2 12.5 17C14.6 16.8 15.8 15.6 16 13.5Z" fill="white" />
+      <defs>
+        <linearGradient id="logo_grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#A855F7" />
+          <stop offset="1" stopColor="#6366F1" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+// --- [메인 앱 컴포넌트] ---
+export default function App() {
+  const [appState, setAppState] = useState('onboarding'); // 'onboarding' | 'main'
+  const [events, setEvents] = useState(MOCK_EVENTS);
+
+  const handleLogout = () => {
+    setAppState('onboarding');
+  };
+
+  if (appState === 'onboarding') {
+    return <OnboardingFlow onComplete={() => setAppState('main')} />;
+  }
+
+  return <MainWorkspace events={events} setEvents={setEvents} onLogout={handleLogout} />;
+}
+
+// 자동완성 및 옵션 모의 데이터
+const MOCK_SCHOOLS = ['한양대학교', '한양대학교(ERICA)', '서울대학교', '고려대학교', '연세대학교', '성균관대학교', '서강대학교', '카이스트', '포스텍'];
+const MOCK_MAJORS = ['컴퓨터소프트웨어학부', '컴퓨터공학과', '인공지능학과', '데이터사이언스학과', '기계공학부', '전자공학부', '경영학부', '경제금융학부', '소프트웨어학부'];
+const PREDEFINED_COMPANIES = ['네이버', '카카오', '라인', '쿠팡', '배달의민족', '당근마켓', '토스', '삼성전자', '현대자동차'];
+const ALL_COMPANIES = [...PREDEFINED_COMPANIES, 'SK텔레콤', 'LG전자', '구글코리아', 'AWS코리아', '마이크로소프트', '애플코리아', '무신사', '직방', '야놀자', '쏘카', '두나무', '넥슨', '엔씨소프트', '넷마블', '크래프톤', '현대카드', '카카오페이', '카카오뱅크', '스타트업', '외국계기업'];
+const AI_RECOMMENDED_ROLES = ['프론트엔드 엔지니어', '풀스택 엔지니어', 'UX/UI 디자이너'];
+const ALL_ROLES = [...AI_RECOMMENDED_ROLES, '백엔드 엔지니어', '데이터 엔지니어', '데이터 애널리스트', 'AI/ML 리서처', '머신러닝 엔지니어', 'iOS 개발자', '안드로이드 개발자', '데브옵스 엔지니어', '보안 엔지니어', '프로덕트 매니저(PM)', '프로젝트 매니저(PO)', 'QA 엔지니어', '기술영업', '디지털 마케터', '그로스 해커'];
+
+// --- [1. 온보딩 플로우 (소프트 모던 스타일)] ---
+function OnboardingFlow({ onComplete }) {
+  const [step, setStep] = useState(1);
+  const [schoolInfo, setSchoolInfo] = useState({ school: '', major: '', grade: '', status: '' });
+  const [isSchoolFocused, setIsSchoolFocused] = useState(false);
+  const [isMajorFocused, setIsMajorFocused] = useState(false);
+  const [isGradeOpen, setIsGradeOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [resumeType, setResumeType] = useState('link');
+  const [resumeUrl, setResumeUrl] = useState('');
+  const [resumeFile, setResumeFile] = useState(null);
+  const [selectedCompanies, setSelectedCompanies] = useState([]);
+  const [companySearch, setCompanySearch] = useState('');
+  const [isCompanyFocused, setIsCompanyFocused] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [roleSearch, setRoleSearch] = useState('');
+  const [isRoleFocused, setIsRoleFocused] = useState(false);
+  const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+
+  const handleNext = () => { 
+    if (step === 3 && !hasAnalyzed) {
+      setIsAnalyzingResume(true);
+      setStep(4);
+      setTimeout(() => { setIsAnalyzingResume(false); setHasAnalyzed(true); }, 2500);
+    } else if (step < 5) {
+      setStep(step + 1); 
+    } else {
+      onComplete(); 
+    }
+  };
+
+  const addCompany = (company) => {
+    if (!selectedCompanies.includes(company)) setSelectedCompanies([...selectedCompanies, company]);
+    setCompanySearch(''); setIsCompanyFocused(false);
+  };
+  const removeCompany = (company) => setSelectedCompanies(selectedCompanies.filter(c => c !== company));
+
+  const addRole = (role) => {
+    if (!selectedRoles.includes(role)) setSelectedRoles([...selectedRoles, role]);
+    setRoleSearch(''); setIsRoleFocused(false);
+  };
+  const removeRole = (role) => setSelectedRoles(selectedRoles.filter(r => r !== role));
+
+  const filteredSchools = MOCK_SCHOOLS.filter(s => s.toLowerCase().includes(schoolInfo.school.toLowerCase()) && s !== schoolInfo.school);
+  const filteredMajors = MOCK_MAJORS.filter(m => m.toLowerCase().includes(schoolInfo.major.toLowerCase()) && m !== schoolInfo.major);
+  const filteredCompanies = ALL_COMPANIES.filter(c => c.toLowerCase().includes(companySearch.toLowerCase()) && !selectedCompanies.includes(c));
+  const filteredRoles = ALL_ROLES.filter(r => r.toLowerCase().includes(roleSearch.toLowerCase()) && !selectedRoles.includes(r));
+  const GRADE_OPTIONS = ['1학년', '2학년', '3학년', '4학년', '5학년 이상'];
+  const STATUS_OPTIONS = ['재학', '휴학', '졸업유예', '졸업'];
+
+  return (
+    <div className="min-h-screen bg-[#fbfcff] flex flex-col justify-center items-center p-6 font-sans">
+      <div className="w-full max-w-[480px] bg-white p-8 md:p-10 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative">
+        {!isAnalyzingResume && (
+          <div className="w-full bg-slate-100 h-2 rounded-full mb-10 overflow-hidden relative">
+            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-700 ease-in-out" style={{ width: `${(step / 5) * 100}%` }} />
+          </div>
+        )}
+
+        {/* Step 1: 학교 정보 */}
+        {step === 1 && (
+          <div className="animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-sm font-bold mb-4">
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span> Step 1
+            </div>
+            <h1 className="text-[28px] font-bold text-slate-800 mb-3 leading-tight tracking-tight">소속된 학교와 학과를<br />알려주세요</h1>
+            <p className="text-slate-500 mb-8 text-[15px]">맞춤형 교내 공지사항과 정보를 가져오기 위해 필요해요.</p>
+            <div className="space-y-4 mb-4">
+              <div className="relative">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" placeholder="학교 검색 (예: 한양대학교)" 
+                  value={schoolInfo.school} onChange={(e) => setSchoolInfo({...schoolInfo, school: e.target.value})}
+                  onFocus={() => setIsSchoolFocused(true)} onBlur={() => setTimeout(() => setIsSchoolFocused(false), 200)}
+                  className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[15px] focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-50 outline-none transition-all font-medium text-slate-800 placeholder-slate-400"
+                />
+                {isSchoolFocused && schoolInfo.school && filteredSchools.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-lg z-10 overflow-hidden max-h-48 overflow-y-auto custom-scrollbar animate-fade-in-up">
+                    {filteredSchools.map(school => (
+                      <div key={school} onClick={() => setSchoolInfo({...schoolInfo, school: school})} className="px-5 py-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer text-[15px] font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0">{school}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" placeholder="학과 검색 (예: 컴퓨터소프트웨어학부)" 
+                  value={schoolInfo.major} onChange={(e) => setSchoolInfo({...schoolInfo, major: e.target.value})}
+                  onFocus={() => setIsMajorFocused(true)} onBlur={() => setTimeout(() => setIsMajorFocused(false), 200)}
+                  className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[15px] focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-50 outline-none transition-all font-medium text-slate-800 placeholder-slate-400"
+                />
+                {isMajorFocused && schoolInfo.major && filteredMajors.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-lg z-10 overflow-hidden max-h-48 overflow-y-auto custom-scrollbar animate-fade-in-up">
+                    {filteredMajors.map(major => (
+                      <div key={major} onClick={() => setSchoolInfo({...schoolInfo, major: major})} className="px-5 py-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer text-[15px] font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0">{major}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: 학적 상태 */}
+        {step === 2 && (
+          <div className="animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-sm font-bold mb-4">
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span> Step 2
+            </div>
+            <h1 className="text-[28px] font-bold text-slate-800 mb-3 leading-tight tracking-tight">현재 학적 상태를<br />알려주세요</h1>
+            <p className="text-slate-500 mb-8 text-[15px]">학적 상태와 학년에 따라 지원할 수 있는 프로그램이 달라져요.</p>
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1 relative">
+                <button 
+                  onClick={() => setIsStatusOpen(!isStatusOpen)} onBlur={() => setTimeout(() => setIsStatusOpen(false), 200)}
+                  className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl text-[15px] outline-none transition-all font-medium flex justify-between items-center ${isStatusOpen ? 'bg-white border-purple-300 ring-4 ring-purple-50 text-slate-800' : 'border-slate-100 text-slate-800 hover:border-slate-200'}`}
+                >
+                  <span className={schoolInfo.status ? 'text-slate-800' : 'text-slate-400'}>{schoolInfo.status || '학적 상태'}</span>
+                  <ChevronRight size={16} className={`text-slate-400 transition-transform duration-300 ${isStatusOpen ? '-rotate-90' : 'rotate-90'}`} />
+                </button>
+                {isStatusOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-lg z-10 overflow-hidden animate-fade-in-up">
+                    {STATUS_OPTIONS.map(status => (
+                      <div key={status} onClick={() => { setSchoolInfo({ ...schoolInfo, status: status, grade: status === '졸업' ? '' : schoolInfo.grade }); }} className="px-5 py-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer text-[15px] font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0">{status}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 relative">
+                <button 
+                  onClick={() => { if (schoolInfo.status !== '졸업') setIsGradeOpen(!isGradeOpen); }} onBlur={() => setTimeout(() => setIsGradeOpen(false), 200)} disabled={schoolInfo.status === '졸업'}
+                  className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl text-[15px] outline-none transition-all font-medium flex justify-between items-center ${schoolInfo.status === '졸업' ? 'bg-slate-100/50 border-slate-100 text-slate-400 cursor-not-allowed' : isGradeOpen ? 'bg-white border-purple-300 ring-4 ring-purple-50 text-slate-800' : 'border-slate-100 text-slate-800 hover:border-slate-200'}`}
+                >
+                  <span className={schoolInfo.status === '졸업' ? 'text-slate-400' : (schoolInfo.grade ? 'text-slate-800' : 'text-slate-400')}>{schoolInfo.status === '졸업' ? '해당 없음' : (schoolInfo.grade || '학년 선택')}</span>
+                  <ChevronRight size={16} className={`text-slate-400 transition-transform duration-300 ${isGradeOpen ? '-rotate-90' : 'rotate-90'}`} />
+                </button>
+                {isGradeOpen && schoolInfo.status !== '졸업' && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-lg z-10 overflow-hidden animate-fade-in-up">
+                    {GRADE_OPTIONS.map(grade => (
+                      <div key={grade} onClick={() => setSchoolInfo({...schoolInfo, grade: grade})} className="px-5 py-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer text-[15px] font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0">{grade}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: 이력서 제출 */}
+        {step === 3 && (
+          <div className="animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-sm font-bold mb-4">
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span> Step 3
+            </div>
+            <h1 className="text-[28px] font-bold text-slate-800 mb-3 leading-tight tracking-tight">이력서나 포트폴리오를<br />제출해주세요</h1>
+            <p className="text-slate-500 mb-8 text-[15px] leading-relaxed">
+              작성하신 경험을 바탕으로 Agent가<br/>가장 적합한 직무와 기업 공고를 추천해 드려요.
+            </p>
+            <div className="flex bg-slate-50 p-1 rounded-xl mb-6 border border-slate-100">
+              <button onClick={() => setResumeType('link')} className={`flex-1 py-2.5 text-[14px] font-bold rounded-lg transition-all ${resumeType === 'link' ? 'bg-white shadow-sm text-purple-600 border border-slate-100/50' : 'text-slate-500 hover:text-slate-700'}`}>링크 입력</button>
+              <button onClick={() => setResumeType('file')} className={`flex-1 py-2.5 text-[14px] font-bold rounded-lg transition-all ${resumeType === 'file' ? 'bg-white shadow-sm text-purple-600 border border-slate-100/50' : 'text-slate-500 hover:text-slate-700'}`}>파일 첨부</button>
+            </div>
+            {resumeType === 'link' && (
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 transition-all focus-within:bg-white focus-within:border-purple-300 focus-within:ring-4 focus-within:ring-purple-50 animate-fade-in-up">
+                <label className="flex items-center gap-2 text-[13px] font-bold text-purple-600 mb-2"><Link2 size={16} /> 링크드인 / 노션 URL</label>
+                <input type="text" placeholder="https://..." value={resumeUrl} onChange={(e) => setResumeUrl(e.target.value)} className="w-full bg-transparent outline-none font-medium text-[15px] text-slate-800 placeholder-slate-400" />
+              </div>
+            )}
+            {resumeType === 'file' && (
+              <div onClick={() => document.getElementById('resume-upload').click()} className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer animate-fade-in-up ${resumeFile ? 'border-purple-400 bg-purple-50/50' : 'border-slate-200 hover:bg-slate-50 hover:border-purple-300'}`}>
+                <input type="file" id="resume-upload" className="hidden" accept=".pdf" onChange={(e) => setResumeFile(e.target.files[0])} />
+                {resumeFile ? (
+                  <><div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3"><FileText size={24} className="text-purple-600" /></div><span className="text-[15px] font-bold text-purple-700 text-center truncate max-w-full px-4">{resumeFile.name}</span><span className="text-[13px] font-medium text-purple-400 mt-1">클릭하여 다른 파일 선택</span></>
+                ) : (
+                  <><div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors"><UploadCloud size={24} className="text-slate-400 group-hover:text-purple-500 transition-colors" /></div><span className="text-[15px] font-bold text-slate-700 mb-1">PDF 파일 업로드</span><span className="text-[13px] font-medium text-slate-400 text-center">클릭하거나 파일을 여기로 드래그하세요<br/>(최대 10MB)</span></>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: 관심 기업 */}
+        {step === 4 && (
+          <div className="animate-fade-in-up">
+            {isAnalyzingResume ? (
+              <div className="py-16 flex flex-col items-center justify-center animate-fade-in">
+                <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+                  <div className="absolute inset-0 rounded-full border-4 border-purple-100"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
+                  <Sparkles size={32} className="text-purple-600" />
+                </div>
+                <h3 className="text-[22px] font-bold text-slate-800 mb-2 tracking-tight">이력서를 분석하고 있어요</h3>
+                <p className="text-[15px] text-slate-500 text-center leading-relaxed">제출해주신 이력서를 바탕으로<br/>가장 잘 맞는 직무와 기업을 매칭해 드릴게요...</p>
+              </div>
+            ) : (
+              <div className="animate-fade-in">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-sm font-bold mb-4"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Step 4</div>
+                <h1 className="text-[28px] font-bold text-slate-800 mb-3 leading-tight tracking-tight">관심 있는 기업이나<br />산업군이 있나요?</h1>
+                <p className="text-slate-500 mb-6 text-[15px] leading-relaxed">선택하신 기업의 채용 소식을 가장 먼저 알려드릴게요.</p>
+                {selectedCompanies.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {selectedCompanies.map(company => (
+                      <span key={company} className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-xl text-[14px] font-bold shadow-sm animate-fade-in-up">
+                        {company} <button onClick={() => removeCompany(company)} className="text-purple-400 hover:text-purple-600 ml-1"><X size={14}/></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="relative mb-6">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" placeholder="관심 기업 검색 (예: 토스, 당근마켓)" value={companySearch} onChange={(e) => setCompanySearch(e.target.value)} onFocus={() => setIsCompanyFocused(true)} onBlur={() => setTimeout(() => setIsCompanyFocused(false), 200)} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[15px] focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-50 outline-none transition-all font-medium text-slate-800 placeholder-slate-400" />
+                  {isCompanyFocused && companySearch && filteredCompanies.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-lg z-10 overflow-hidden max-h-48 overflow-y-auto custom-scrollbar animate-fade-in-up">
+                      {filteredCompanies.map(company => (
+                        <div key={company} onClick={() => addCompany(company)} className="px-5 py-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer text-[15px] font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0">{company}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
+                  <p className="text-[13px] font-bold text-slate-500 mb-3 flex items-center gap-1.5">🔥 인기 기업 추가</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PREDEFINED_COMPANIES.filter(c => !selectedCompanies.includes(c)).map(company => (
+                      <button key={company} onClick={() => addCompany(company)} className="px-3 py-1.5 rounded-lg text-[13px] font-bold transition-all bg-white border border-slate-200 text-slate-600 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 shadow-sm">+ {company}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 5: 직무 선택 */}
+        {step === 5 && (
+          <div className="animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-sm font-bold mb-4">
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span> Step 5
+            </div>
+            <h1 className="text-[28px] font-bold text-slate-800 mb-3 leading-tight tracking-tight">어떤 직무의 공고를<br />수집해올까요?</h1>
+            <p className="text-slate-500 mb-6 text-[15px] leading-relaxed">Agent가 분석한 <strong className="text-purple-600">추천 직무</strong>를 확인해보세요.</p>
+            {selectedRoles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {selectedRoles.map(role => (
+                  <span key={role} className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-xl text-[14px] font-bold shadow-sm animate-fade-in-up">
+                    {role} <button onClick={() => removeRole(role)} className="text-purple-400 hover:text-purple-600 ml-1"><X size={14}/></button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative mb-6">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" placeholder="희망 직무 검색 (예: 프론트엔드, PM)" value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)} onFocus={() => setIsRoleFocused(true)} onBlur={() => setTimeout(() => setIsRoleFocused(false), 200)} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[15px] focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-50 outline-none transition-all font-medium text-slate-800 placeholder-slate-400" />
+              {isRoleFocused && roleSearch && filteredRoles.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-lg z-10 overflow-hidden max-h-48 overflow-y-auto custom-scrollbar animate-fade-in-up">
+                  {filteredRoles.map(role => (
+                    <div key={role} onClick={() => addRole(role)} className="px-5 py-3 hover:bg-purple-50 hover:text-purple-700 cursor-pointer text-[15px] font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0">{role}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="bg-purple-50/50 border border-purple-100 p-4 rounded-2xl">
+              <div className="flex items-center gap-1.5 text-purple-700 font-bold text-[13px] mb-3"><Sparkles size={16} /> AI 추천 핏(Fit)</div>
+              <div className="flex flex-col gap-2">
+                {AI_RECOMMENDED_ROLES.filter(r => !selectedRoles.includes(r)).map(role => (
+                  <button key={role} onClick={() => addRole(role)} className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-[14px] font-bold transition-all bg-white border border-purple-100/50 text-slate-700 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 shadow-sm">
+                    <div className="w-4 h-4 rounded-full border-2 border-slate-200 flex items-center justify-center group-hover:border-purple-400" /> {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isAnalyzingResume && (
+          <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
+            {step > 1 ? <button onClick={() => setStep(step === 4 ? 3 : step - 1)} className="text-slate-400 hover:text-slate-600 font-medium px-4 py-2 transition-colors">이전으로</button> : <div></div>}
+            <button 
+              onClick={handleNext}
+              disabled={(step === 1 && (!schoolInfo.school || !schoolInfo.major)) || (step === 2 && (!schoolInfo.status || (schoolInfo.status !== '졸업' && !schoolInfo.grade))) || (step === 3 && ((resumeType === 'link' && !resumeUrl.trim()) || (resumeType === 'file' && !resumeFile))) || (step === 4 && selectedCompanies.length === 0) || (step === 5 && selectedRoles.length === 0)}
+              className="flex-1 max-w-[200px] bg-slate-800 text-white font-semibold text-[16px] py-4 rounded-2xl hover:bg-slate-900 hover:shadow-lg hover:shadow-slate-800/20 transition-all duration-300 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none flex justify-center items-center gap-2"
+            >
+              {step === 5 ? <>구글 연동하기 <CalendarCheck size={18} /></> : '다음 단계로'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- [2. 메인 워크스페이스] ---
+function MainWorkspace({ events, setEvents, onLogout }) {
+  const [showCardNews, setShowCardNews] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isSearching, setIsSearching] = useState(false); 
+  const [currentDate, setCurrentDate] = useState(new Date(2026, 2, 1)); 
+
+  const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const handleToday = () => setCurrentDate(new Date(2026, 2, 22)); 
+
+  const handleSearchNow = () => {
+    setIsSearching(true);
+    setTimeout(() => { setIsSearching(false); setShowCardNews(true); }, 2500);
+  };
+
+  // 이벤트를 캘린더에 일괄 등록 (마감일 + 준비 일정 모두 포함)
+  const addEventsToCalendar = (newEventsArray) => {
+    setEvents([...events, ...newEventsArray]);
+  };
+
+  return (
+    <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <CalendarHeader 
+          currentDate={currentDate} onPrev={handlePrevMonth} onNext={handleNextMonth} onToday={handleToday}
+          onOpenSettings={() => setShowSettings(true)} onLogout={onLogout} onSearchNow={handleSearchNow}
+        />
+        <CalendarGrid currentDate={currentDate} events={events} onEventClick={(event) => setSelectedEvent(event)} />
+
+        {showCardNews && (
+          <CardNewsOverlay onClose={() => setShowCardNews(false)} onAddEvent={addEventsToCalendar} onSearchNow={handleSearchNow} />
+        )}
+
+        {selectedEvent && (
+          <EventDetailOverlay 
+            event={selectedEvent} onClose={() => setSelectedEvent(null)}
+            onRemove={(id) => { setEvents(events.filter(e => e.id !== id)); setSelectedEvent(null); }}
+          />
+        )}
+
+        {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+
+        {isSearching && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md animate-fade-in">
+            <div className="flex flex-col items-center bg-white p-10 rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100">
+              <div className="w-20 h-20 relative flex items-center justify-center mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-purple-100"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
+                <Bot size={32} className="text-purple-600" />
+              </div>
+              <h3 className="text-[22px] font-bold text-slate-800 mb-2 tracking-tight">Agent가 일정을 업데이트 중입니다</h3>
+              <p className="text-[15px] text-slate-500 text-center leading-relaxed">등록된 이력서와 희망 직무를 분석하여<br/>최적의 기회를 가져오고 있어요...</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- [컴포넌트: 캘린더 헤더] ---
+function CalendarHeader({ currentDate, onPrev, onNext, onToday, onOpenSettings, onLogout, onSearchNow }) {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) { if (profileRef.current && !profileRef.current.contains(event.target)) setIsProfileOpen(false); }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="h-[72px] border-b border-slate-100 flex items-center justify-between px-4 md:px-8 bg-white z-20 shadow-[0_2px_10px_rgba(0,0,0,0.01)] shrink-0 absolute top-0 left-0 right-0 md:relative">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2"><SchedAILogo className="shadow-sm transition-transform" /><span className="font-bold text-lg text-slate-800 tracking-tight hidden sm:block mr-2">SchedAI</span></div>
+        <div className="w-px h-5 bg-slate-200 hidden sm:block"></div>
+        <div className="flex items-center gap-3 ml-2">
+          <h2 className="text-[20px] font-bold text-slate-800 tracking-tight min-w-[100px]">{currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월</h2>
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg p-1">
+            <button onClick={onPrev} className="p-1 text-slate-500 hover:bg-white hover:shadow-sm rounded transition-all"><ChevronLeft size={16} /></button>
+            <button onClick={onToday} className="px-3 py-1 text-[13px] font-bold text-slate-600 hover:bg-white hover:shadow-sm rounded transition-all">오늘</button>
+            <button onClick={onNext} className="p-1 text-slate-500 hover:bg-white hover:shadow-sm rounded transition-all"><ChevronRight size={16} /></button>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 md:gap-4">
+        <button onClick={onSearchNow} className="group flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2.5 rounded-[14px] text-sm font-bold transition-all active:scale-95 shadow-[0_4px_12px_rgba(168,85,247,0.25)] hover:shadow-[0_6px_16px_rgba(168,85,247,0.35)]" title="일정 업데이트 실행">
+          <Sparkles size={18} className="animate-pulse" /><span className="hidden sm:inline">일정 업데이트</span>
+        </button>
+        <button onClick={onOpenSettings} className="group flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 md:px-4 py-2.5 rounded-[14px] text-sm font-bold transition-all active:scale-95 border border-slate-100" title="새로운 소스/일정 추가">
+          <Plus size={18} className="transition-transform group-hover:rotate-90" /><span className="hidden sm:inline">새로 만들기</span>
+        </button>
+        <div className="relative" ref={profileRef}>
+          <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 shadow-sm hover:bg-slate-200 transition-colors sm:ml-2 focus:outline-none focus:ring-2 focus:ring-purple-300">
+            <span className="text-sm font-bold">S</span>
+          </button>
+          {isProfileOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-lg py-2 z-50 animate-fade-in-up">
+              <div className="px-4 py-3 border-b border-slate-50 mb-1"><p className="text-sm font-bold text-slate-800">SchedAI User</p><p className="text-xs text-slate-500 truncate">idong0308@hanyang.ac.kr</p></div>
+              <button className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-purple-600 flex items-center gap-2 transition-colors"><User size={16} /> 프로필 설정</button>
+              <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"><LogOut size={16} /> 로그아웃</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- [컴포넌트: 캘린더 그리드 (메인)] ---
+function CalendarGrid({ currentDate, events, onEventClick }) {
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  
+  const firstDay = new Date(year, month, 1).getDay(); 
+  const daysInMonth = new Date(year, month + 1, 0).getDate(); 
+  const daysInPrevMonth = new Date(year, month, 0).getDate(); 
+  
+  const calendarCells = [];
+  
+  for(let i = firstDay - 1; i >= 0; i--) calendarCells.push({ date: daysInPrevMonth - i, isCurrentMonth: false, year: month === 0 ? year - 1 : year, month: month === 0 ? 11 : month - 1 });
+  for(let i = 1; i <= daysInMonth; i++) calendarCells.push({ date: i, isCurrentMonth: true, year: year, month: month });
+  
+  let nextDays = 1;
+  while(calendarCells.length < 35) calendarCells.push({ date: nextDays++, isCurrentMonth: false, year: month === 11 ? year + 1 : year, month: month === 11 ? 0 : month + 1 });
+  if (calendarCells.length > 35 && calendarCells.length < 42) {
+    while(calendarCells.length < 42) calendarCells.push({ date: nextDays++, isCurrentMonth: false, year: month === 11 ? year + 1 : year, month: month === 11 ? 0 : month + 1 });
+  }
+
+  const isActualToday = (cellYear, cellMonth, cellDate) => cellYear === 2026 && cellMonth === 2 && cellDate === 22;
+
+  return (
+    <div className="flex-1 flex flex-col bg-white overflow-hidden p-4 pt-[72px] md:pt-4"> 
+      <div className="grid grid-cols-7 mb-2">
+        {days.map((day, i) => <div key={day} className={`text-center py-2 text-[13px] font-bold ${i === 0 ? 'text-rose-400' : i === 6 ? 'text-blue-400' : 'text-slate-500'}`}>{day}</div>)}
+      </div>
+      
+      <div className={`flex-1 grid grid-cols-7 ${calendarCells.length > 35 ? 'grid-rows-6' : 'grid-rows-5'} border-t border-l border-slate-100/70 rounded-2xl overflow-hidden`}>
+        {calendarCells.map((cell, i) => {
+          const isToday = isActualToday(cell.year, cell.month, cell.date);
+          const dayEvents = events.filter(e => e.year === cell.year && e.month === cell.month && e.date === cell.date);
+
+          return (
+            <div key={i} className={`p-1.5 md:p-2.5 flex flex-col border-b border-r border-slate-100/70 transition-colors ${!cell.isCurrentMonth ? 'bg-slate-50/50' : 'hover:bg-slate-50/30'}`}>
+              <div className="flex justify-between items-start mb-2">
+                <span className={`text-xs md:text-sm p-1.5 min-w-[28px] text-center rounded-xl font-medium transition-all ${isToday ? 'bg-purple-500 text-white font-bold shadow-md shadow-purple-500/20' : (i % 7 === 0 ? 'text-rose-400' : 'text-slate-700')} ${!cell.isCurrentMonth && !isToday ? 'opacity-40' : ''}`}>
+                  {cell.date === 1 && cell.isCurrentMonth ? `${cell.month + 1}월 ${cell.date}일` : cell.date}
+                </span>
+              </div>
+              
+              <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar pr-1">
+                {dayEvents.map(ev => {
+                  let colorClass = "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent"; 
+                  
+                  if (ev.category === 'job') colorClass = "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60";
+                  else if (ev.category === 'school') colorClass = "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60";
+                  else if (ev.category === 'prep') colorClass = "bg-white text-slate-600 hover:bg-slate-50 border border-slate-300 border-dashed shadow-none opacity-80"; // 준비일정 스타일 (점선)
+                  
+                  return (
+                    <div key={ev.id} onClick={() => onEventClick(ev)} className={`text-[11px] md:text-xs px-2 py-1.5 rounded-lg truncate cursor-pointer font-semibold transition-all shadow-sm ${colorClass}`}>
+                      {ev.category === 'prep' && <span className="mr-1 text-slate-400">└</span>}
+                      {ev.title}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --- [3. 카드뉴스 오버레이 (상세 핏 분석 + 액션 플랜)] ---
+function CardNewsOverlay({ onClose, onAddEvent, onSearchNow }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  const currentCard = MOCK_RECOMMENDATIONS[currentIndex];
+  
+  const handleAction = (type) => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    
+    if (type === 'add' && currentCard) {
+      const dateParts = currentCard.deadline.split('.');
+      const deadlineYear = parseInt(dateParts[0]);
+      const deadlineMonth = parseInt(dateParts[1]) - 1;
+      const deadlineDate = parseInt(dateParts[2]);
+
+      // 1. 메인 공고 마감일 이벤트 생성
+      const newEvents = [{
+        id: Date.now(),
+        title: `[마감] ${currentCard.title}`,
+        year: deadlineYear,
+        month: deadlineMonth,
+        date: deadlineDate,
+        type: 'agent',
+        category: currentCard.category,
+        source: currentCard.source,
+        url: currentCard.url,
+        relevance: currentCard.relevance,
+        strengths: currentCard.strengths,
+        weaknesses: currentCard.weaknesses,
+        content: currentCard.content,
+        deadline: currentCard.deadline
+      }];
+
+      // 2. 세부 액션 플랜(준비 일정) 이벤트들을 마감일 역산하여 캘린더에 추가
+      if (currentCard.actionPlan) {
+        currentCard.actionPlan.forEach((plan, idx) => {
+          // 간이 날짜 계산 (프로토타입용: 3월 내에서만 이동한다고 가정)
+          const targetDate = deadlineDate + plan.offsetDays;
+          
+          newEvents.push({
+            id: Date.now() + idx + 1,
+            title: plan.title,
+            year: deadlineYear,
+            month: deadlineMonth, // 월을 넘나드는 연산은 프로토타입에서 생략됨
+            date: targetDate > 0 ? targetDate : 1, // 음수 방지용
+            type: 'prep',
+            category: 'prep', // 준비 일정용 카테고리 (점선 스타일)
+            content: `'${currentCard.title}' 지원을 위해 Agent가 생성한 세부 준비 일정입니다.`,
+            parentEventId: newEvents[0].id // 부모 공고 ID 연결
+          });
+        });
+      }
+
+      onAddEvent(newEvents); // 배열 형태로 한 번에 추가
+    }
+
+    setTimeout(() => {
+      setIsAnimating(false);
+      if (currentIndex < MOCK_RECOMMENDATIONS.length - 1) setCurrentIndex(prev => prev + 1);
+      else onClose();
+    }, 350);
+  };
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 pt-10">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity duration-300" onClick={onClose}></div>
+      <div className="relative w-full max-w-[440px] flex flex-col items-center z-10">
+        {currentCard ? (
+          <div className={`w-full bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] flex flex-col max-h-[85vh] ${isAnimating ? 'scale-95 opacity-0 translate-y-4' : 'scale-100 opacity-100 translate-y-0'}`}>
+            
+            {/* 카드 헤더 (고정) */}
+            <div className="p-6 pb-4 shrink-0 border-b border-slate-100">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-lg tracking-wide border border-purple-100/50">
+                    {currentCard.source}
+                  </span>
+                </div>
+                <div className="bg-amber-50 px-2.5 py-1 rounded-lg text-[12px] font-bold text-amber-600 flex items-center border border-amber-100/50">
+                  <Zap size={14} className="mr-1 fill-amber-500" /> AI 매칭률 {currentCard.relevance}%
+                </div>
+              </div>
+              <h3 className="text-[22px] font-bold text-slate-800 leading-snug tracking-tight mb-1">{currentCard.title}</h3>
+              {currentCard.url && (
+                <a href={currentCard.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-bold text-slate-400 hover:text-purple-600 transition-colors">
+                  <ExternalLink size={12} /> 채용 공고 원문 보기
+                </a>
+              )}
+            </div>
+            
+            {/* 카드 바디 (스크롤 가능 영역) */}
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <p className="text-slate-600 text-[14px] leading-relaxed mb-6 font-medium bg-slate-50 p-4 rounded-2xl">{currentCard.content}</p>
+              
+              {/* 이력서 기반 강/약점 분석 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
+                  <h4 className="text-emerald-700 font-bold text-[13px] flex items-center mb-2.5">
+                    <CheckCircle2 size={16} className="mr-1.5" /> 이력서 강점 (Fit)
+                  </h4>
+                  <ul className="text-[13px] text-slate-600 space-y-1.5 leading-relaxed font-medium">
+                    {currentCard.strengths?.map((s, i) => <li key={i} className="flex items-start"><span className="mr-1.5 mt-0.5 text-emerald-400">•</span> <span>{s}</span></li>)}
+                  </ul>
+                </div>
+                <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4">
+                  <h4 className="text-rose-700 font-bold text-[13px] flex items-center mb-2.5">
+                    <AlertTriangle size={16} className="mr-1.5" /> 보완 필요사항
+                  </h4>
+                  <ul className="text-[13px] text-slate-600 space-y-1.5 leading-relaxed font-medium">
+                    {currentCard.weaknesses?.map((w, i) => <li key={i} className="flex items-start"><span className="mr-1.5 mt-0.5 text-rose-400">•</span> <span>{w}</span></li>)}
+                  </ul>
+                </div>
+              </div>
+
+              {/* 캘린더 자동 추가 일정 (액션 플랜) */}
+              {currentCard.actionPlan && (
+                <div className="bg-slate-50 border border-slate-100/80 rounded-[20px] p-5 mb-2">
+                  <h4 className="text-slate-700 font-bold text-[13px] flex items-center mb-4">
+                    <ListTodo size={16} className="mr-1.5 text-purple-500" /> 
+                    캘린더에 함께 등록될 세부 일정
+                  </h4>
+                  <div className="space-y-3 pl-1">
+                    {currentCard.actionPlan.map((plan, i) => (
+                      <div key={i} className="flex items-center gap-3 text-[13px]">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0"></div>
+                        <span className="text-slate-400 font-bold w-9 shrink-0">D{plan.offsetDays}</span>
+                        <span className="text-slate-700 font-bold bg-white px-2.5 py-1 rounded-lg shadow-sm border border-slate-100 w-full truncate">{plan.title}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-3 text-[13px] mt-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0 ring-4 ring-rose-100"></div>
+                      <span className="text-rose-400 font-bold w-9 shrink-0">D-Day</span>
+                      <span className="text-rose-600 font-bold">지원 마감일 ({currentCard.deadline})</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 카드 액션 버튼 (고정) */}
+            <div className="px-6 pb-6 pt-2 shrink-0 bg-white">
+              <div className="flex gap-3 mt-2">
+                <button onClick={() => handleAction('skip')} className="flex-[0.8] py-4 bg-slate-50 text-slate-600 font-bold rounded-[20px] hover:bg-slate-100 transition-colors">넘기기</button>
+                <button onClick={() => handleAction('add')} className="flex-[1.2] py-4 bg-purple-500 text-white font-bold rounded-[20px] hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/30 transition-all flex justify-center items-center gap-2">
+                  <CalendarCheck size={18} /> 캘린더에 일괄 추가
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full bg-white rounded-[32px] p-10 text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+            <div className="w-20 h-20 bg-emerald-50 rounded-[24px] flex items-center justify-center mx-auto mb-6"><Check size={40} className="text-emerald-500" /></div>
+            <h3 className="text-[22px] font-bold text-slate-800 mb-3 tracking-tight">모두 확인했어요!</h3>
+            <p className="text-slate-500 text-[15px] mb-8 leading-relaxed">준비된 추천 공고를 모두 살펴보셨네요.<br/>지금 바로 새로운 공고를 찾아볼까요?</p>
+            <button onClick={() => { onClose(); setTimeout(onSearchNow, 150); }} className="w-full py-4 bg-slate-800 text-white rounded-[20px] font-bold flex justify-center items-center gap-2 hover:bg-slate-900 transition-colors shadow-lg shadow-slate-800/20">
+              <Search size={18} /> 일정 업데이트 실행
+            </button>
+            <button onClick={onClose} className="mt-6 text-[15px] font-semibold text-slate-400 hover:text-slate-600 transition-colors">닫기</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- [컴포넌트: 일정 상세 오버레이 (카드뉴스와 동일한 UI 유지)] ---
+function EventDetailOverlay({ event, onClose, onRemove }) {
+  const [isAnimating, setIsAnimating] = useState(false);
+  const handleClose = () => { setIsAnimating(true); setTimeout(onClose, 300); };
+
+  // 준비 일정(Prep)인 경우 간소화된 뷰 표시
+  if (event.category === 'prep') {
+    return (
+      <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+        <div className={`absolute inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'}`} onClick={handleClose}></div>
+        <div className={`relative w-full max-w-[360px] bg-white rounded-[32px] p-7 shadow-2xl z-10 transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] ${isAnimating ? 'scale-95 opacity-0 translate-y-4' : 'scale-100 opacity-100 translate-y-0'}`}>
+          <div className="flex items-center gap-2 text-purple-600 font-bold text-[13px] mb-3 bg-purple-50 px-3 py-1.5 rounded-lg w-max border border-purple-100"><ListTodo size={16}/> 연계 준비 일정</div>
+          <h3 className="text-[22px] font-bold text-slate-800 mb-2">{event.title}</h3>
+          <p className="text-slate-500 text-[14px] mb-8">{event.content}</p>
+          <div className="flex gap-3">
+            <button onClick={() => onRemove(event.id)} className="flex-1 py-3.5 bg-rose-50 text-rose-600 font-bold rounded-[16px] hover:bg-rose-100 transition-colors">삭제</button>
+            <button onClick={handleClose} className="flex-1 py-3.5 bg-slate-800 text-white font-bold rounded-[16px] hover:bg-slate-900 transition-colors">확인</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 pt-10">
+      <div className={`absolute inset-0 bg-slate-900/30 backdrop-blur-sm transition-opacity duration-300 ${isAnimating ? 'opacity-0' : 'opacity-100'}`} onClick={handleClose}></div>
+      <div className={`relative w-full max-w-[440px] flex flex-col items-center z-10 transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] ${isAnimating ? 'scale-95 opacity-0 translate-y-4' : 'scale-100 opacity-100 translate-y-0'}`}>
+        <div className="w-full bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col max-h-[85vh]">
+          
+          <div className="p-6 pb-4 shrink-0 border-b border-slate-100">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex gap-2">
+                <span className="text-[12px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg tracking-wide border border-slate-200/50 flex items-center gap-1.5"><CalendarCheck size={14} /> 일정 상세</span>
+                <span className="text-[12px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-lg tracking-wide border border-purple-100/50">{event.source || 'Agent'}</span>
+              </div>
+              {event.relevance && <div className="bg-amber-50 px-2.5 py-1 rounded-lg text-[12px] font-bold text-amber-600 flex items-center border border-amber-100/50"><Zap size={14} className="mr-1 fill-amber-500" /> 매칭률 {event.relevance}%</div>}
+            </div>
+            <h3 className="text-[22px] font-bold text-slate-800 leading-snug tracking-tight mb-1">{event.title}</h3>
+            {event.url && <a href={event.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-bold text-slate-400 hover:text-purple-600 transition-colors"><ExternalLink size={12} /> 공고 원문 보기</a>}
+          </div>
+          
+          <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <p className="text-slate-600 text-[14px] leading-relaxed mb-6 font-medium bg-slate-50 p-4 rounded-2xl">{event.content || "상세 내용이 없습니다."}</p>
+            
+            {(event.strengths || event.weaknesses) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                {event.strengths && (
+                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
+                    <h4 className="text-emerald-700 font-bold text-[13px] flex items-center mb-2.5"><CheckCircle2 size={16} className="mr-1.5" /> 이력서 강점 (Fit)</h4>
+                    <ul className="text-[13px] text-slate-600 space-y-1.5 leading-relaxed font-medium">{event.strengths.map((s, i) => <li key={i} className="flex items-start"><span className="mr-1.5 mt-0.5 text-emerald-400">•</span> <span>{s}</span></li>)}</ul>
+                  </div>
+                )}
+                {event.weaknesses && (
+                  <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4">
+                    <h4 className="text-rose-700 font-bold text-[13px] flex items-center mb-2.5"><AlertTriangle size={16} className="mr-1.5" /> 보완 필요사항</h4>
+                    <ul className="text-[13px] text-slate-600 space-y-1.5 leading-relaxed font-medium">{event.weaknesses.map((w, i) => <li key={i} className="flex items-start"><span className="mr-1.5 mt-0.5 text-rose-400">•</span> <span>{w}</span></li>)}</ul>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-2"><CalendarIcon size={16} className="text-slate-400" /><span className="text-sm text-slate-500 font-bold">마감일</span></div>
+              <span className="text-[16px] font-bold text-rose-500">{event.deadline || `${event.year}.${String(event.month+1).padStart(2, '0')}.${String(event.date).padStart(2, '0')}`}</span>
+            </div>
+          </div>
+          
+          <div className="px-6 pb-6 pt-2 shrink-0 bg-white flex gap-3">
+            <button onClick={() => onRemove(event.id)} className="flex-[0.8] py-4 bg-rose-50 text-rose-600 font-bold rounded-[20px] hover:bg-rose-100 transition-colors">공고 삭제</button>
+            <button onClick={handleClose} className="flex-[1.2] py-4 bg-slate-800 text-white font-bold rounded-[20px] hover:bg-slate-900 transition-all shadow-md shadow-slate-800/20">확인 완료</button>
+          </div>
+        </div>
+        <button onClick={handleClose} className="mt-6 w-12 h-12 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors border border-white/30"><X size={24} /></button>
+      </div>
+    </div>
+  );
+}
+
+// --- [4. 설정/커스텀 소스 관리 모달] ---
+function SettingsModal({ onClose }) {
+  const [url, setUrl] = useState('');
+  const [desc, setDesc] = useState('');
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-md transition-opacity" onClick={onClose}></div>
+      <div className="relative w-full max-w-lg bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between p-7 border-b border-slate-100 bg-white sticky top-0 z-10">
+          <h2 className="text-[20px] font-bold text-slate-800 tracking-tight">새로운 수집 소스 추가</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"><X size={18}/></button>
+        </div>
+        <div className="p-7 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/30">
+          <h3 className="text-[13px] font-bold text-slate-400 mb-4 tracking-wide flex justify-between">나만의 커스텀 소스 URL</h3>
+          <div className="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 mb-5">
+            <h4 className="font-bold text-purple-600 mb-2 text-[15px] flex items-center gap-2"><div className="p-1 bg-purple-50 rounded-md"><Plus size={16}/></div>자동 수집 요청하기</h4>
+            <p className="text-[13px] text-slate-500 mb-5 font-medium leading-relaxed">Agent가 해당 웹페이지를 주기적으로 읽고<br/>원하는 일정을 자동으로 추출해 캘린더에 띄워줍니다.</p>
+            <input type="text" placeholder="URL 주소 (예: rocketpunch.com)" className="w-full text-[15px] p-4 rounded-xl bg-slate-50 border border-slate-100 mb-3 focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-50 outline-none font-medium transition-all text-slate-700 placeholder-slate-400" value={url} onChange={e => setUrl(e.target.value)} />
+            <textarea placeholder="어떤 정보를 원하시나요? (예: 마케팅 직무 인턴)" className="w-full text-[15px] p-4 rounded-xl bg-slate-50 border border-slate-100 mb-5 focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-50 outline-none h-24 resize-none font-medium transition-all text-slate-700 placeholder-slate-400" value={desc} onChange={e => setDesc(e.target.value)} />
+            <button className="w-full py-4 bg-slate-800 text-white rounded-[16px] text-[15px] font-bold hover:bg-slate-900 transition-colors shadow-md shadow-slate-800/10">추가 및 크롤링 시작</button>
+          </div>
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 flex justify-between items-center opacity-70">
+             <div className="flex items-center gap-4">
+               <div className="p-2.5 bg-slate-50 rounded-xl"><Link2 size={18} className="text-slate-500"/></div>
+               <div><div className="text-[14px] font-bold text-slate-700 mb-0.5">notion.so/events</div><div className="text-[12px] font-medium text-slate-400">AI 관련 행사/밋업</div></div>
+             </div>
+             <div className="text-[12px] font-bold text-emerald-500 bg-emerald-50 px-2.5 py-1 rounded-lg">수집 중</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
